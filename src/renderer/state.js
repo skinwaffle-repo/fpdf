@@ -99,7 +99,8 @@ export function pageVersion(doc, i) {
 }
 
 export function savePrefs() {
-	api.setSettings({ prefs: { ...S.settings.prefs, tp: S.tp, night: S.night } });
+	S.settings.prefs = { ...S.settings.prefs, tp: S.tp, night: S.night };
+	api.setSettings({ prefs: S.settings.prefs });
 }
 
 const ANNOT_NAMES = {

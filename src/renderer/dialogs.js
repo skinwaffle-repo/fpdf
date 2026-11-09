@@ -449,7 +449,8 @@ export async function aboutDialog() {
 			),
 		),
 	);
-	await modal({ title: "about fuck pdf", body, width: 760, buttons: [{ label: "close", value: true, primary: true }] });
+	const r = await modal({ title: "about fuck pdf", body, width: 760, buttons: [{ label: "check for updates", value: "update", left: true }, { label: "close", value: true, primary: true }] });
+	return r.value;
 }
 
 export async function shortcutsDialog() {

@@ -8,6 +8,7 @@
   <a href="#download">download</a> &nbsp;|&nbsp;
   <a href="#what-it-does">features</a> &nbsp;|&nbsp;
   <a href="#screenshots">screenshots</a> &nbsp;|&nbsp;
+  <a href="#updates">updates</a> &nbsp;|&nbsp;
   <a href="#build-it-yourself">build</a>
 </p>
 
@@ -57,7 +58,7 @@ So here's the thing they charge for, minus the charge. Every feature, on, for ev
 
 ## what it does
 
-Everything runs on your computer. Nothing is uploaded. Nothing phones home.
+Everything runs on your computer. Nothing is uploaded. The only network request it ever makes is a once-a-day update check, and you can switch that off.
 
 | the thing | what it usually costs | what it costs here |
 |---|---|---|
@@ -93,12 +94,70 @@ Not here. Click a line, change it, press enter:
 
 ## download
 
-Two flavours:
+Pick one:
 
-- **`fuck-pdf-x.y.z-portable.exe`**: one file. No install. Run it from your desktop, a USB stick, a network drive, wherever.
-- **`fuck-pdf-x.y.z-setup.exe`**: installs it, adds a start menu entry, and shows up under "Open with" for PDF files.
+- **`fuck-pdf-x.y.z-setup.exe`**: installs it, adds start menu entries (the app and its updater), and shows up under "Open with" for PDF files.
+- **`fuck-pdf-x.y.z-portable.exe`**: one file. No install. Run it from your desktop, a USB stick, a network drive, wherever. It can still update itself.
+- **`fuck-pdf-updater.exe`**: 6 MB. Run it on a machine without fuck pdf and it installs the latest version for you.
+
+`SHA256SUMS` lists the checksum of every file, if you want to check them yourself.
 
 The exe isn't signed, because signing certificates cost money every year and see "why". Windows will show **"Windows protected your PC"**. Click **More info**, then **Run anyway**. And if you'd rather not trust a random exe from the internet: good instinct. The source is right here. Read it, then build it yourself.
+
+## updates
+
+fuck pdf updates itself, without a background service, a tray icon, or anything nagging you.
+
+- **once a day at startup** it asks the updater whether there's something new. if there is, you get a small note with an "update" button. turn it off under **help > check for updates on startup**.
+- **help > check for updates** does it right now.
+- **the updater** is a separate little program (start menu: "fuck pdf updater"). it finds the newest version, downloads it, checks its SHA-256 against `SHA256SUMS`, closes fuck pdf (it asks you to save first), installs silently and starts it again. if the checksum doesn't match, it refuses to install, full stop.
+- **portable copies** replace themselves in place.
+
+```
+    ____           __                ______
+   / __/_  _______/ /__   ____  ____/ / __/
+  / /_/ / / / ___/ //_/  / __ \/ __  / /_
+ / __/ /_/ / /__/ ,<    / /_/ / /_/ / __/
+/_/  \__,_/\___/_/|_|  / .___/\__,_/_/
+                      /_/   updater
+
+  installed:  1.1.0   (C:\Users\you\AppData\Local\Programs\fuck pdf)
+  looking for updates...
+  latest:     1.1.1   (github skinwaffle-repo/fpdf)
+  downloading fuck-pdf-1.1.1-setup.exe
+  [################################] 100%   126.3 / 126.3 MB
+  sha-256 ok
+  installing (silent)...
+  done. fuck pdf 1.1.1 is installed.
+```
+
+### where it looks
+
+In order, newest version wins:
+
+1. **GitHub Releases** of this repo
+2. **a folder**, by default `%USERPROFILE%\Nextcloud\FPDF`. drop a new `fuck-pdf-x.y.z-setup.exe` (and its `SHA256SUMS`) into a synced or shared folder and every machine picks it up. no internet needed.
+
+Change that in `%APPDATA%\fuck pdf\updater.json` (survives updates) or in `updater.json` next to the updater:
+
+```json
+{
+  "sources": [
+    { "type": "github", "repo": "skinwaffle-repo/fpdf", "token": "" },
+    { "type": "folder", "path": "\\\\fileserver\\software\\fuck pdf" }
+  ]
+}
+```
+
+`token` is only needed if the repo is private. Command line, for scripts and IT people:
+
+```
+fuck-pdf-updater.exe                       check, ask, update
+fuck-pdf-updater.exe --check --json        just report: {"current":"1.1.0","latest":"1.1.1","available":true,...}
+fuck-pdf-updater.exe --yes --no-relaunch   unattended update (e.g. on a schedule)
+--source github:owner/repo                 override the sources (repeatable)
+--source folder:C:\path
+```
 
 ## keyboard
 
@@ -119,14 +178,15 @@ The exe isn't signed, because signing certificates cost money every year and see
 
 ## build it yourself
 
-You need Node.js 20 or newer.
+You need Node.js 20 or newer, and Go 1.22 or newer for the updater.
 
 ```sh
 npm install
-npm start            # run it
-npm test             # engine tests: text editing, redaction, forms, links, encryption, page surgery
-npm run test:ui      # drives the real app and clicks through it
-npm run dist:win     # windows portable exe + installer, into dist/
+npm start              # run it
+npm test               # engine tests: text editing, redaction, forms, links, encryption, page surgery
+npm run test:ui        # drives the real app and clicks through it
+npm run test:updater   # updater tests
+npm run dist:win       # updater + portable exe + installer + SHA256SUMS, into dist/
 ```
 
 The portable exe builds on any OS. Building the installer on Linux needs Wine.
@@ -139,6 +199,7 @@ src/
   main.js            window, files, dialogs, printing
   preload.js         the narrow bridge between the two halves
   renderer/          the interface: viewer, tools, dialogs, menus
+updater/             the updater (Go): sources, checksums, silent install, portable swap
 test/                engine tests, scripted UI runs, windows build check
 docs/                logo and screenshots
 ```
@@ -164,6 +225,7 @@ fuck pdf stands on the shoulders of people who give their work away for free. Re
 |---|---|---|
 | [MuPDF](https://mupdf.com) by Artifex Software | the actual PDF engine: rendering, text, annotations, redaction, forms, encryption, page surgery. the heavy lifting is all theirs. | AGPL-3.0-or-later |
 | [Electron](https://www.electronjs.org), with Chromium and Node.js inside | the window and the runtime | MIT (Chromium's own licenses ship in the app folder as `LICENSES.chromium.html`) |
+| [Go](https://go.dev) runtime and standard library | the updater | BSD-3-Clause |
 
 **used to build, test and draw it** (not shipped)
 

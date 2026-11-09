@@ -6,3 +6,5 @@ test/out/
 .DS_Store
 Thumbs.db
 __pycache__/
+dist-updater/
+dist-next/

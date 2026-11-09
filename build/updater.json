@@ -1,0 +1,6 @@
+{
+	"sources": [
+		{ "type": "github", "repo": "skinwaffle-repo/fpdf" },
+		{ "type": "folder", "path": "%USERPROFILE%\\Nextcloud\\FPDF" }
+	]
+}

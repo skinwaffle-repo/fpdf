@@ -40,6 +40,9 @@ contextBridge.exposeInMainWorld("fpdf", {
 	devtools: () => ipcRenderer.invoke("app:devtools"),
 	fullscreen: () => ipcRenderer.invoke("app:fullscreen"),
 	quit: () => ipcRenderer.invoke("app:quit"),
+	updateCheck: () => ipcRenderer.invoke("update:check"),
+	updateInstall: () => ipcRenderer.invoke("update:install"),
+	openUpdater: () => ipcRenderer.invoke("update:openUpdater"),
 	pathForFile: (file) => {
 		try { return webUtils.getPathForFile(file); } catch { return ""; }
 	},

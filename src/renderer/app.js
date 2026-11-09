@@ -163,8 +163,16 @@ const MENUS = {
 		{ label: "flatten annotations + forms", action: () => A.flatten(), disabled: noDoc },
 	],
 	help: () => [
+		{ label: "check for updates...", action: () => A.checkUpdates(true) },
+		{ label: "check for updates on startup", checked: S.settings.prefs.autoUpdate !== false, action: () => {
+			S.settings.prefs.autoUpdate = S.settings.prefs.autoUpdate === false;
+			savePrefs();
+			toast(S.settings.prefs.autoUpdate ? "will check for updates once a day at startup" : "won't check for updates unless you ask");
+		} },
+		{ label: "open the updater", action: () => api.openUpdater() },
+		"-",
 		{ label: "keyboard shortcuts", key: "f1", action: () => D.shortcutsDialog() },
-		{ label: "about fuck pdf", action: () => D.aboutDialog() },
+		{ label: "about fuck pdf", action: async () => { if ((await D.aboutDialog()) === "update") A.checkUpdates(true); } },
 		{ label: "license (GNU AGPL v3)", action: () => api.openExternal("https://www.gnu.org/licenses/agpl-3.0.html") },
 		"-",
 		{ label: "developer tools", key: "ctrl+shift+i", action: () => api.devtools() },
@@ -656,6 +664,42 @@ const A = {
 		if (await confirmBox("flatten", "burn every annotation and form field into the page content?\nthey stop being editable, but look the same everywhere.", { ok: "flatten" })) {
 			await op(doc, "flatten");
 		}
+	},
+	async checkUpdates(manual = false) {
+		const run = () => api.updateCheck();
+		const r = manual ? await busy("checking for updates", run) : await run().catch(() => null);
+		if (!r) return;
+		if (!r.ok) {
+			if (manual) toast(r.unsupported ? "updates come with the windows build." : "update check failed: " + r.error, { error: !r.unsupported });
+			return;
+		}
+		const u = r.value;
+		if (!u.latest) {
+			if (manual) toast("couldn't reach any update source:\n" + (u.errors || []).join("\n"), { error: true, ms: 9000 });
+			return;
+		}
+		if (!u.available) {
+			if (manual) toast(`you're on the latest version (${u.current || u.latest}).`);
+			return;
+		}
+		const go = () => A.installUpdate(u);
+		if (!manual) {
+			toast(`fuck pdf ${u.latest} is out (you have ${u.current || "?"}).`, { ms: 15000, action: { label: "update", fn: go } });
+			return;
+		}
+		const ok = await confirmBox("update available",
+			`fuck pdf ${u.latest} is out. you have ${u.current || "an unknown version"}.\nfrom: ${u.source}\n\nthe app closes, updates itself and opens again.`,
+			{ ok: "update + restart", cancel: "later" });
+		if (ok) go();
+	},
+	async installUpdate() {
+		const r = await api.updateInstall();
+		if (r.ok) { toast("closing to update..."); return; }
+		if (r.dirty && r.dirty.length) {
+			toast("save or close these first, then update:\n" + r.dirty.map((d) => "  " + d.name).join("\n"), { error: true, ms: 9000 });
+			return;
+		}
+		toast("couldn't start the updater: " + r.error, { error: true });
 	},
 	night() {
 		S.night = !S.night;
@@ -1423,7 +1467,7 @@ window.addEventListener("drop", async (e) => {
 
 // =================================================================== boot
 window.addEventListener("resize", debounce(() => V.onResize(), 60));
-$("#logo").addEventListener("click", () => D.aboutDialog());
+$("#logo").addEventListener("click", async () => { if ((await D.aboutDialog()) === "update") A.checkUpdates(true); });
 
 api.onOpenFiles((files) => A.openPaths(files));
 api.onEngineCrash((msg) => {
@@ -1447,6 +1491,10 @@ async function boot() {
 	activate(null);
 	const pending = await api.pendingFiles();
 	if (pending.length) await A.openPaths(pending);
+	// daily update check (help > check for updates on startup turns it off)
+	if (S.settings.prefs.autoUpdate !== false && Date.now() - (S.settings.lastUpdateCheck || 0) > 20 * 3600 * 1000) {
+		setTimeout(() => A.checkUpdates(false), 6000);
+	}
 	// index installed fonts in the background (used by edit text)
 	setTimeout(async () => {
 		try {

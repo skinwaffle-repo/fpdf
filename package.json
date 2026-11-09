@@ -1,7 +1,7 @@
 {
   "name": "fuck-pdf",
   "productName": "fuck pdf",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "fuck pdf - a free, open-source PDF viewer and editor. No subscriptions. No paywalls.",
   "main": "src/main.js",
   "author": "fuck pdf contributors",
@@ -9,12 +9,14 @@
   "scripts": {
     "start": "electron .",
     "test": "node test/engine.test.mjs",
-    "dist:win": "electron-builder --win --x64",
+    "dist:win": "node scripts/build-updater.cjs && electron-builder --win --x64 && node scripts/checksums.cjs",
     "test:ui": "xvfb-run -a node test/ui/doc.mjs && xvfb-run -a node test/ui/edit-links.mjs",
     "icon": "python3 scripts/make-icon.py",
     "test:win": "cd dist/win-unpacked && WINEDEBUG=-all ELECTRON_RUN_AS_NODE=1 wine \"fuck pdf.exe\" ../../test/win-smoke.mjs > ../../test/out/win-smoke.log 2>&1; cat ../../test/out/win-smoke.json",
     "screenshots": "xvfb-run -a -s \"-screen 0 1600x1000x24\" node test/ui/screenshots.mjs",
-    "demo": "python3 scripts/make-demo.py test/fixtures/demo.pdf"
+    "demo": "python3 scripts/make-demo.py test/fixtures/demo.pdf",
+    "build:updater": "node scripts/build-updater.cjs",
+    "test:updater": "cd updater && go test ./..."
   },
   "dependencies": {
     "mupdf": "^1.28.6"
@@ -85,8 +87,19 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "fuck pdf",
-      "license": "LICENSE"
-    }
+      "license": "LICENSE",
+      "include": "build/installer.nsh"
+    },
+    "extraResources": [
+      {
+        "from": "dist-updater",
+        "to": "updater",
+        "filter": [
+          "fuck-pdf-updater.exe",
+          "updater.json"
+        ]
+      }
+    ]
   },
   "repository": {
     "type": "git",

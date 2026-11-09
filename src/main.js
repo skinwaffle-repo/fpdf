@@ -8,6 +8,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 const os = require("node:os");
 const { Worker } = require("node:worker_threads");
+const { execFile, spawn } = require("node:child_process");
 
 const APP_NAME = "fuck pdf";
 app.setName(APP_NAME);
@@ -391,6 +392,65 @@ ipcMain.handle("shell:external", (_e, url) => {
 ipcMain.handle("app:devtools", () => win && win.webContents.toggleDevTools());
 ipcMain.handle("app:fullscreen", () => win && win.setFullScreen(!win.isFullScreen()));
 ipcMain.handle("app:quit", () => win && win.close());
+
+// ------------------------------------------------------------------ updates
+// The updater is a separate small exe (updater/ in the repo). The app only
+// asks it whether there's something new, and hands over to it to install.
+
+function updaterExe() {
+	if (process.platform !== "win32") return null;
+	const p = app.isPackaged
+		? path.join(process.resourcesPath, "updater", "fuck-pdf-updater.exe")
+		: path.join(__dirname, "..", "dist-updater", "fuck-pdf-updater.exe");
+	return fs.existsSync(p) ? p : null;
+}
+
+function portableArgs() {
+	// set by the portable launcher: the exe the user actually double-clicked
+	const p = process.env.PORTABLE_EXECUTABLE_FILE;
+	return p ? ["--portable", p, "--current", app.getVersion()] : [];
+}
+
+ipcMain.handle("update:check", async () => {
+	const exe = updaterExe();
+	if (!exe) return { ok: false, unsupported: true, error: "updates are handled by the windows build" };
+	const r = await new Promise((resolve) => {
+		execFile(exe, ["--check", "--json", ...portableArgs()], { windowsHide: true, timeout: 90000 }, (err, stdout) => {
+			const last = String(stdout || "").trim().split(/\r?\n/).pop();
+			try {
+				resolve({ ok: true, value: JSON.parse(last) });
+			} catch {
+				resolve({ ok: false, error: err ? String(err.message || err) : "no answer from the updater" });
+			}
+		});
+	});
+	const s = loadSettings();
+	s.lastUpdateCheck = Date.now();
+	saveSettings();
+	return r;
+});
+
+ipcMain.handle("update:install", async () => {
+	const exe = updaterExe();
+	if (!exe) return { ok: false, error: "updates are handled by the windows build" };
+	let dirty = [];
+	try { dirty = await call("dirtyDocs"); } catch { dirty = []; }
+	if (dirty.length) return { ok: false, dirty };
+	const child = spawn(exe, ["--yes", "--wait-pid", String(process.pid), ...portableArgs()], {
+		detached: true, stdio: "ignore", windowsHide: false,
+	});
+	child.unref();
+	allowClose = true;
+	setTimeout(() => app.quit(), 400);
+	return { ok: true };
+});
+
+ipcMain.handle("update:openUpdater", () => {
+	const exe = updaterExe();
+	if (!exe) return false;
+	spawn(exe, [...portableArgs()], { detached: true, stdio: "ignore", windowsHide: false }).unref();
+	return true;
+});
 
 ipcMain.handle("app:print", async (_e, docId, opts = {}) => {
 	let dir = null;
