@@ -65,7 +65,34 @@ type Config struct {
 
 var defaultConfig = Config{Sources: []Source{
 	{Type: "github", Repo: "skinwaffle-repo/fpdf"},
+	{Type: "folder", Path: `%USERPROFILE%\Nextcloud\FPDF`},
 }}
+
+// If this exe sits next to fuck pdf installers (e.g. copied into a shared
+// folder with them), that folder is a source too.
+func withOwnFolder(cfg Config) Config {
+	exe, err := os.Executable()
+	if err != nil {
+		return cfg
+	}
+	dir := filepath.Dir(exe)
+	for _, s := range cfg.Sources {
+		if s.Type == "folder" && strings.EqualFold(filepath.Clean(expandEnv(s.Path)), filepath.Clean(dir)) {
+			return cfg
+		}
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return cfg
+	}
+	for _, e := range entries {
+		if setupRe.MatchString(e.Name()) || portableRe.MatchString(e.Name()) {
+			cfg.Sources = append(cfg.Sources, Source{Type: "folder", Path: dir})
+			return cfg
+		}
+	}
+	return cfg
+}
 
 func (s Source) label() string {
 	if s.Type == "github" {
@@ -575,6 +602,9 @@ func closeApp(waitPid int, yes bool) error {
 }
 
 // re-run from %TEMP% so the installer can overwrite this exe
+// sources resolved before relocating (tokens stay in the config file, which is passed along too)
+var ownSources []Source
+
 func relocate(target Target, cfgPath string) error {
 	exe, err := os.Executable()
 	if err != nil {
@@ -591,6 +621,16 @@ func relocate(target Target, cfgPath string) error {
 	}
 	if !hasFlag("config") && cfgPath != "" {
 		args = append(args, "--config", cfgPath)
+	}
+	if !hasFlag("source") {
+		for _, s := range ownSources {
+			switch s.Type {
+			case "github":
+				args = append(args, "--source", "github:"+s.Repo)
+			case "folder":
+				args = append(args, "--source", "folder:"+s.Path)
+			}
+		}
 	}
 	cmd := exec.Command(tmp, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -713,6 +753,15 @@ var setFlags = map[string]bool{}
 
 func hasFlag(name string) bool { return setFlags[name] }
 
+func configHasToken(c Config) bool {
+	for _, s := range c.Sources {
+		if s.Token != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func parseSources(list []string) []Source {
 	var out []Source
 	for _, s := range list {
@@ -757,6 +806,8 @@ func main() {
 	cfg, cfgPath := loadConfig(*cfgFile)
 	if len(sources) > 0 {
 		cfg.Sources = parseSources(sources)
+	} else if !*fromTemp {
+		cfg = withOwnFolder(cfg)
 	}
 	target := detectTarget(*installDir, *portable, *current)
 	kind := target.assetKind()
@@ -793,6 +844,10 @@ func main() {
 	}
 
 	// ---- interactive / install
+	ownSources = nil
+	if !hasFlag("source") && !configHasToken(cfg) {
+		ownSources = cfg.Sources
+	}
 	if runtime.GOOS == "windows" && !*fromTemp {
 		if err := relocate(target, cfgPath); err == nil {
 			return // the copy in %TEMP% carries on in this console
