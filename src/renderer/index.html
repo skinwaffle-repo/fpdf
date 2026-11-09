@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:">
+<title>fuck pdf</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="no-doc">
+<div id="app">
+	<header id="titlebar">
+		<button id="logo" class="no-drag" title="about fuck pdf">fuck pdf<span class="blink">_</span></button>
+		<nav id="menubar" class="no-drag"></nav>
+		<div id="tabs" class="no-drag"></div>
+		<div class="drag-space"></div>
+	</header>
+
+	<div id="toolbar"></div>
+
+	<main id="main">
+		<aside id="sidebar">
+			<div class="side-tabs">
+				<button data-side="pages" class="on">pages</button>
+				<button data-side="outline">outline</button>
+				<button data-side="notes">notes</button>
+				<button data-side="search">find</button>
+			</div>
+			<div class="side-body" id="side-pages"></div>
+			<div class="side-body hidden" id="side-outline"></div>
+			<div class="side-body hidden" id="side-notes"></div>
+			<div class="side-body hidden" id="side-search">
+				<div class="search-box">
+					<input id="side-search-input" type="search" placeholder="search text..." spellcheck="false">
+					<label class="chk"><input type="checkbox" id="side-search-case"> match case</label>
+				</div>
+				<div id="side-search-results"></div>
+			</div>
+		</aside>
+
+		<section id="viewer-wrap">
+			<div id="findbar" class="hidden">
+				<input id="find-input" type="search" placeholder="find in document" spellcheck="false">
+				<span id="find-count">0/0</span>
+				<button id="find-prev" title="previous (shift+enter)">&lt;</button>
+				<button id="find-next" title="next (enter)">&gt;</button>
+				<label class="chk"><input type="checkbox" id="find-case"> Aa</label>
+				<button id="find-redact" title="mark all matches for redaction">redact all</button>
+				<button id="find-close" title="close (esc)">x</button>
+			</div>
+			<div id="viewer" tabindex="0"><div id="pages"></div></div>
+			<div id="welcome"></div>
+			<div id="drop-hint" class="hidden"><pre>
+   drop it.
+
+   pdf  ->  open
+   pdf  ->  on a page thumbnail: insert
+   img  ->  convert to pdf
+</pre></div>
+		</section>
+
+		<aside id="props"></aside>
+	</main>
+
+	<footer id="statusbar">
+		<div class="sb-group">
+			<button id="sb-prev" title="previous page">&lt;</button>
+			<input id="sb-page" type="text" value="0" spellcheck="false">
+			<span id="sb-count">/ 0</span>
+			<button id="sb-next" title="next page">&gt;</button>
+		</div>
+		<div class="sb-group">
+			<button id="sb-zoom-out" title="zoom out (ctrl -)">-</button>
+			<input id="sb-zoom" type="text" value="100%" spellcheck="false">
+			<button id="sb-zoom-in" title="zoom in (ctrl +)">+</button>
+			<button id="sb-fitw" title="fit width (ctrl 1)">fit width</button>
+			<button id="sb-fitp" title="fit page (ctrl 2)">fit page</button>
+		</div>
+		<div id="sb-msg" class="sb-grow"></div>
+		<div id="sb-state"></div>
+	</footer>
+</div>
+
+<div id="menu-layer"></div>
+<div id="modal-layer"></div>
+<div id="toasts"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

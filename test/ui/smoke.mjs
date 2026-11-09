@@ -1,0 +1,15 @@
+import { _electron as electron } from "playwright-core";
+import path from "node:path";
+import fs from "node:fs";
+const root = path.resolve(import.meta.dirname, "../..");
+const out = path.join(root, "test/out/ui"); fs.mkdirSync(out, { recursive: true });
+const app = await electron.launch({ args: ["--no-sandbox", root, ...(process.argv.slice(2))], cwd: root, env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: "1" } });
+const win = await app.firstWindow();
+const logs = [];
+win.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
+win.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
+await win.setViewportSize?.({ width: 1440, height: 900 });
+await win.waitForTimeout(1500);
+await win.screenshot({ path: path.join(out, "01-welcome.png") });
+console.log(logs.join("\n"));
+await app.close();
