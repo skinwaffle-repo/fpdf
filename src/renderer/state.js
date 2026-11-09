@@ -101,3 +101,16 @@ export function pageVersion(doc, i) {
 export function savePrefs() {
 	api.setSettings({ prefs: { ...S.settings.prefs, tp: S.tp, night: S.night } });
 }
+
+const ANNOT_NAMES = {
+	Text: "note", FreeText: "text box", Square: "box", Circle: "ellipse", Ink: "drawing", Line: "line",
+	Stamp: "stamp", Highlight: "highlight", Underline: "underline", StrikeOut: "strikeout", Squiggly: "squiggly",
+	Redact: "redaction mark", Polygon: "polygon", PolyLine: "polyline", Caret: "caret", FileAttachment: "attachment",
+};
+/** Human name for an annotation (whiteouts, images and signatures are boxes/stamps underneath). */
+export function annotName(a) {
+	if (!a) return "";
+	if (a.type === "Square" && a.contents === "whiteout") return "whiteout";
+	if (a.type === "Stamp" && (a.contents === "signature" || a.contents === "image")) return a.contents;
+	return ANNOT_NAMES[a.type] || String(a.type || "").toLowerCase();
+}

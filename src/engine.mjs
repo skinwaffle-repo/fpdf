@@ -52,6 +52,11 @@ function rgbOf(color, fallback = [0, 0, 0]) {
 	return color.slice(0, 3);
 }
 
+/** "TimesNewRomanPS-BoldMT" -> "Times New Roman" (best effort, for CSS previews). */
+function psToFamily(name) {
+	return stripSubset(name).split(/[-,]/)[0].replace(/(PSMT|MT|PS)$/, "").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+}
+
 function stripSubset(name) {
 	return String(name || "").replace(/^[A-Z]{6}\+/, "");
 }
@@ -474,7 +479,18 @@ export class Engine {
 	/** Lines of text with geometry, for the edit-text tool. */
 	pageLines(id, index) {
 		const rec = this._rec(id);
-		return this._lines(rec, index);
+		const lines = this._lines(rec, index);
+		// the installed family name, so the UI can preview edits in the real font
+		const memo = new Map();
+		for (const l of lines) {
+			const key = l.font + "|" + l.bold + "|" + l.italic;
+			if (!memo.has(key)) {
+				const face = safe(() => this.fonts.match(l.font, { bold: l.bold, italic: l.italic }), null);
+				memo.set(key, face ? face.family : psToFamily(l.font));
+			}
+			l.cssFamily = memo.get(key);
+		}
+		return lines;
 	}
 
 	pageText(id, index) {
@@ -521,6 +537,33 @@ export class Engine {
 			}
 		}
 		return { results: out, total };
+	}
+
+	// ---- links
+
+	/** Hyperlinks on a page: external URIs or internal destinations (page + position). */
+	links(id, index) {
+		const rec = this._rec(id);
+		const page = this._page(rec, index);
+		const out = [];
+		for (const l of page.getLinks()) {
+			const uri = safe(() => l.getURI(), "");
+			const external = safe(() => l.isExternal(), /^[a-z][a-z0-9+.-]*:/i.test(uri));
+			const o = { rect: l.getBounds(), uri, external };
+			if (!external) {
+				const d = safe(() => rec.doc.resolveLinkDestination(uri), null);
+				if (d && d.page >= 0) {
+					o.page = d.page;
+					o.x = Number.isFinite(d.x) ? d.x : null;
+					o.y = Number.isFinite(d.y) ? d.y : null;
+				} else {
+					const pg = safe(() => rec.doc.resolveLink(uri), -1);
+					if (pg >= 0) o.page = pg;
+				}
+			}
+			out.push(o);
+		}
+		return out;
 	}
 
 	// ---- annotations

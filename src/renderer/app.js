@@ -2,10 +2,10 @@
 // Copyright (C) fuck pdf contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { $, $$, el, toast, busy, popupMenu, closeMenus, modal, modalOpen, confirmBox, promptBox, hex2rgb, rgb2hex, PALETTE, fmtBytes, debounce } from "./ui.js";
-import { S, cur, E, op, bus, api, applyResult, cleanErr, newDocState, pageVersion, savePrefs } from "./state.js";
+import { S, cur, E, op, bus, api, applyResult, cleanErr, newDocState, pageVersion, savePrefs, annotName } from "./state.js";
 import * as V from "./viewer.js";
 import * as D from "./dialogs.js";
-import { FINGER, BANNER } from "./ascii.js";
+import { BANNER, drawFinger } from "./ascii.js";
 
 // =================================================================== tools
 const TOOLDEFS = [
@@ -945,7 +945,7 @@ const refreshNotes = debounce(async () => {
 			await V.pageData(doc, a.page);
 			V.selectAnnot(doc, a.page, a);
 		} } },
-		el("div.nt", {}, el("span", {}, el("span.swatch-dot", { style: { background: c } }), a.type.toLowerCase()), el("span", {}, "p." + (a.page + 1))),
+		el("div.nt", {}, el("span", {}, el("span.swatch-dot", { style: { background: c } }), annotName(a)), el("span", {}, "p." + (a.page + 1))),
 		a.contents ? el("div.nc", {}, a.contents.slice(0, 200)) : null));
 	}
 }, 250);
@@ -1189,7 +1189,7 @@ function annotSection() {
 	const colorable = !isWhiteout && !(a.type === "Stamp" && !a.contents) && a.type !== "Redact";
 	const cur0 = a.type === "FreeText" ? rgb2hex(a.textColor) : rgb2hex(a.color);
 	const contents = el("textarea", { placeholder: "comment", value: a.contents || "" });
-	return sec("// selected " + a.type.toLowerCase(), "p." + (a.page + 1),
+	return sec("// selected " + annotName(a), "p." + (a.page + 1),
 		colorable ? swatches(cur0, (c) => upd({ color: hex2rgb(c) })) : null,
 		a.width != null && !isWhiteout ? slider("width", 0.5, 20, 0.5, a.width || 1, (v, done) => done && upd({ width: v }), (v) => v + "pt") : null,
 		a.type !== "Redact" ? slider("opacity", 0.1, 1, 0.05, a.opacity ?? 1, (v, done) => done && upd({ opacity: v }), (v) => Math.round(v * 100) + "%") : null,
@@ -1274,7 +1274,7 @@ function renderWelcome() {
 	const recent = (S.settings.recent || []).slice(0, 8);
 	const btn = (label, key, fn) => el("button", { on: { click: fn } }, label, key ? el("span.k", {}, key) : null);
 	$("#welcome").replaceChildren(el("div.wl", {},
-		el("pre.finger", {}, FINGER),
+		drawFinger(Math.min(460, Math.max(260, window.innerHeight - 380))),
 		el("div", {},
 			el("pre.banner", {}, BANNER),
 			el("div.tag", {}, "the pdf editor that doesn't want your credit card.\nedit text. sign. redact. merge. split. compress. encrypt. fill forms.\nall of it. free. forever. open source (AGPL)."),

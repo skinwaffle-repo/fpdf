@@ -1,168 +1,163 @@
-```
-                 _____
-                /     \
-                | .-. |
-                | | | |
-                | '-' |
-                |     |
-                |     |
-          ___   |     |   ___
-         /   \  |     |  /   \___
-        |     | |     | |    |   \
-   ___  |     | |     | |    |    |
-  /   \ |     |_|     |_|    |    |
- |     \|                         |
- |      \                         |
-  \      '.                       |
-   \       '--.__                 /
-    '.            ''---..._      /
-      '.                   '.   /
-        '-.__________________\_/
-           |                 |
-           |                 |
-```
+<p align="center">
+  <img src="docs/logo.png" alt="fuck pdf" width="100%">
+</p>
 
-```
-    ____           __                ______
-   / __/_  _______/ /__   ____  ____/ / __/
-  / /_/ / / / ___/ //_/  / __ \/ __  / /_
- / __/ /_/ / /__/ ,<    / /_/ / /_/ / __/
-/_/  \__,_/\___/_/|_|  / .___/\__,_/_/
-                      /_/
-```
+<h3 align="center">a free pdf editor for windows. it edits pdfs. that's it. that's the whole business model.</h3>
 
-# fuck pdf
-
-**A free PDF viewer and editor for Windows. Free as in beer. Free as in freedom. Free as in "go fuck yourself, subscription model".**
+<p align="center">
+  <a href="#download">download</a> &nbsp;|&nbsp;
+  <a href="#what-it-does">features</a> &nbsp;|&nbsp;
+  <a href="#screenshots">screenshots</a> &nbsp;|&nbsp;
+  <a href="#build-it-yourself">build</a>
+</p>
 
 ---
 
-## why does this exist
+## why
 
-Because it is the year of our lord 2026 and changing **one typo** in a PDF still costs you a monthly subscription.
+You have a PDF. It has one typo in it. One.
 
-Because "free PDF editors" are a scam genre. You open the file. You fix the typo. You hit save. And *then* it tells you: upgrade to Pro, or enjoy your document with a giant watermark stamped across every page. Half of them want an account. The other half want your email "to send you the file". Some of them are just a web upload form wearing a trench coat, and your contract is now on someone else's server.
+So you go looking for a "free PDF editor". You download it. You fix the typo. You press save. And *that* is the moment it tells you saving is a premium feature. Or it saves, and stamps a fat watermark across every page. Or it wants an account first. Or an email address "to send you your file". Or it's a website that uploads your contract, your bank statement and your medical letter to a server you have never heard of, in a country you couldn't point to.
 
-Because the PDF format has been an open ISO standard (ISO 32000) since 2008, and the buttons to edit it are still behind a paywall.
+PDF is an open standard. It has been for years. The buttons to edit it are still behind a monthly subscription.
 
-Because we got tired of it.
+**fuck that.**
 
-So: **every single "Pro" feature in here is free.** No trial. No watermark. No "export limit". No account. No telemetry. No cloud. No upsell banner. No "Pro" badge on any button, because there is no Pro. There is only this.
+So here's the thing they charge for, minus the charge. Every feature, on, for everyone, forever. No trial. No watermark. No export limit. No account. No telemetry. No cloud. No "upgrade" button, because there's nothing to upgrade to. This is it. All of it.
+
+## screenshots
+
+**edit the text that's already there.** click a line, type, enter. it keeps the original font, size and colour, and the old text is actually gone, not hidden under a white box.
+
+![editing existing text](docs/screenshots/edit-text.png)
+
+**mark it up.** highlights, circles, arrows, sticky notes, stamps that say whatever you want.
+
+![annotations and a custom stamp](docs/screenshots/annotate.png)
+
+**sign it.** draw it, type it, or use an image. saved on your machine for next time.
+
+![signing a document](docs/screenshots/sign.png)
+
+**fill the form.** text fields, checkboxes, dropdowns. tab between fields like a normal person.
+
+![filling a form](docs/screenshots/forms.png)
+
+**shuffle pages around.** drag thumbnails to reorder. right-click to rotate, duplicate, delete, extract, insert.
+
+![page tools](docs/screenshots/pages.png)
+
+**lock it.** AES-256 passwords and permissions. no backdoor, so write the password down.
+
+![password protection](docs/screenshots/protect.png)
+
+**night mode** for 2am contract reading, because of course it's 2am.
+
+![night mode](docs/screenshots/night.png)
 
 ## what it does
 
-All of it runs locally on your machine. Nothing ever leaves it.
+Everything runs on your computer. Nothing is uploaded. Nothing phones home.
 
-| the thing | what they charge for it | what we charge |
+| the thing | what it usually costs | what it costs here |
 |---|---|---|
-| edit existing text (keeps the original font) | subscription | nothing |
-| add text, images, whiteout | subscription | nothing |
-| sign (draw it, type it, or use an image) | subscription, sometimes per document | nothing |
-| fill forms (text, checkboxes, dropdowns), reset, flatten | sometimes free, sometimes not | nothing |
-| **real** redaction (removes the text, not just a black box on top) + search-and-redact | subscription | nothing |
-| merge / combine files, images to pdf | subscription | nothing |
-| split, extract, insert, delete, duplicate, reorder (drag), rotate, crop, resize pages | subscription | nothing |
-| watermark, headers, footers, page numbers, Bates numbering | subscription | nothing |
-| password protection (AES-256) + permissions, remove passwords | subscription | nothing |
-| compress / optimize, strip metadata and javascript | subscription | nothing |
-| highlight, underline, strike out, sticky notes, freehand, boxes, ellipses, lines, arrows, stamps | usually free, credit where due | nothing |
-| export pages to PNG / JPG, text to TXT, print | usually free | nothing |
-| undo / redo for every single edit | n/a | nothing |
-| a white-on-black UI with an ASCII middle finger for a logo | not available at any price | nothing |
+| edit existing text, in the original font | a subscription | nothing |
+| add text, images, whiteout | a subscription | nothing |
+| sign: draw, type, or image | a subscription, sometimes per document | nothing |
+| fill forms, reset them, flatten them | depends on the mood of the vendor | nothing |
+| **real** redaction (deletes the content, not a black box over it), plus search-and-redact | a subscription | nothing |
+| merge files, images to pdf | a subscription | nothing |
+| split, extract, insert, delete, duplicate, reorder, rotate, crop, resize pages | a subscription | nothing |
+| watermarks, headers, footers, page numbers, Bates numbering | a subscription | nothing |
+| password protection, permissions, removing passwords | a subscription | nothing |
+| compress, strip metadata and hidden scripts | a subscription | nothing |
+| highlight, underline, strike out, notes, freehand, boxes, ellipses, lines, arrows, stamps | sometimes free, if you sit through the upsell | nothing |
+| export pages to png / jpg, all text to txt, print | sometimes free | nothing |
+| clickable links (web links open in your browser, internal links jump to the page) | free, fair enough | nothing |
+| undo / redo for every single edit | | nothing |
+| a white on black interface with a skeleton giving you the finger | not available at any price | nothing |
 
-It also opens images, EPUB, CBZ, HTML and plain text, and converts them to PDF so every tool works on them too.
+It also opens images, EPUB, CBZ, HTML and plain text files and turns them into PDFs, so every tool works on those too.
 
-### how "edit text" actually works
+### about that "edit text" thing
 
-Most free editors fake it: they paint a white box over the old text and slap new text on top. The old text is still in the file. Search for it, copy it, it's all still there.
+The usual "free" trick: paint a white rectangle over the old words and type new ones on top. The old text is still in the file. Copy it, search it, it's all still there, sitting under a white box like a body under a rug.
 
-We don't do that. Click a line, change it, hit enter. The old glyphs are **removed** from the page content, and the new text is written in the **same font** at the same position, size and colour. Embedded fonts are usually subsets (only the letters that were used), so if your edit needs a letter the subset doesn't have, fuck pdf finds the full font installed on your system (Arial, Calibri, whatever the document used) and uses that. Only if that fails does it fall back to a standard font.
+Not here. Click a line, change it, press enter:
 
-Polish, Czech, German, whatever: `Zażółć gęślą jaźń` works. It's tested.
+- the old glyphs are **removed from the page**, for real
+- the new text goes in the **same spot**, **same size**, **same colour**
+- in the **same font**. PDFs usually embed only the letters they used, so if your edit needs a letter that isn't there, fuck pdf finds the full font installed on your computer and uses that. A generic font is the last resort, not the first one.
+- light text on a dark background stays readable while you edit it
+- Polish, Czech, German, whatever. `Zażółć gęślą jaźń` works. It's in the test suite.
 
 ## download
 
-Grab an `.exe` from the releases page (or build it yourself, see below):
+Two flavours:
 
-- `fuck-pdf-x.y.z-portable.exe` : one file, no install, run it from anywhere, a USB stick, whatever.
-- `fuck-pdf-x.y.z-setup.exe` : installs it, adds a start menu entry, and shows up under "Open with" for PDFs.
+- **`fuck-pdf-x.y.z-portable.exe`**: one file. No install. Run it from your desktop, a USB stick, a network drive, wherever.
+- **`fuck-pdf-x.y.z-setup.exe`**: installs it, adds a start menu entry, and shows up under "Open with" for PDF files.
 
-The exe isn't code-signed (certificates cost money, see "why does this exist"). Windows SmartScreen will whine with "Windows protected your PC". Click **More info**, then **Run anyway**. If you don't trust it, good, you shouldn't trust random exes: read the source and build it yourself. That's the whole point.
+The exe isn't signed, because signing certificates cost money every year and see "why". Windows will show **"Windows protected your PC"**. Click **More info**, then **Run anyway**. And if you'd rather not trust a random exe from the internet: good instinct. The source is right here. Read it, then build it yourself.
 
 ## keyboard
 
 | key | does |
 |---|---|
-| `v` `h` | select, pan (or hold `space`, or middle mouse) |
-| `e` `t` | edit existing text, add new text |
-| `l` `u` `k` | highlight, underline, strike out |
-| `d` `r` `o` `a` | draw, box, ellipse, arrow |
-| `n` `i` `s` `m` | note, image, sign, stamp |
-| `w` `x` `c` | whiteout, redact, crop |
-| `ctrl+z` `ctrl+y` | undo, redo |
-| `ctrl+f` `ctrl+g` | find, go to page |
-| `ctrl+wheel` | zoom at cursor |
-| `ctrl+1` `ctrl+2` | fit width, fit page |
-| `ctrl+shift+n` | night mode (inverts pages, saves your eyes at 2am) |
-| `f1` | the full list |
+| `v` / `h` | select / pan (or hold `space`, or drag with the middle mouse button) |
+| `e` / `t` | edit existing text / add new text |
+| `l` / `u` / `k` | highlight / underline / strike out |
+| `d` / `r` / `o` / `a` | draw / box / ellipse / arrow |
+| `n` / `i` / `s` / `m` | note / image / sign / stamp |
+| `w` / `x` / `c` | whiteout / redact / crop |
+| `ctrl+z` / `ctrl+y` | undo / redo |
+| `ctrl+f` / `ctrl+g` | find / go to page |
+| `ctrl+wheel` | zoom at the cursor |
+| `ctrl+1` / `ctrl+2` | fit width / fit page |
+| `ctrl+shift+n` | night mode |
+| `f1` | all of them |
 
 ## build it yourself
-
-You need Node.js 20+.
 
 ```sh
 npm install
 npm start            # run it
-npm test             # engine test suite (27 tests: editing, redaction, forms, encryption...)
-npm run dist:win     # build the Windows exes into dist/
+npm test             # engine tests: text editing, redaction, forms, links, encryption, page surgery
+npm run test:ui      # drives the real app and clicks through it
+npm run dist:win     # windows portable exe + installer, into dist/
 ```
 
-Building the Windows portable exe works from Linux, macOS or Windows. The installer (`setup.exe`) needs Wine when you build it on Linux.
-
-## how it's built
-
-- **[MuPDF](https://mupdf.com)** by Artifex does the actual PDF work: rendering, text extraction, annotations, redaction, forms, encryption, page surgery. It's a serious, battle-tested engine, compiled to WebAssembly, and it runs in a worker thread so the UI never freezes.
-- **[Electron](https://www.electronjs.org)** for the window.
-- Plain JavaScript, HTML and CSS for the UI. No framework. No build step. No 900 MB `node_modules` for the app itself (just MuPDF).
+The portable exe builds on any OS. Build the installer on Windows.
 
 ```
 src/
-  engine.mjs        every pdf operation (pure node + mupdf, unit tested)
-  fontindex.mjs     reads installed fonts so edited text matches the original
-  engine-worker.mjs runs the engine off the main thread
-  main.js           window, files, dialogs, printing
-  preload.js        the narrow bridge between the two
-  renderer/         the UI: viewer, tools, dialogs, menus
-test/
-  engine.test.mjs   the test suite
-  ui/               scripted end-to-end runs of the real app
+  engine.mjs         every pdf operation, unit tested
+  fontindex.mjs      reads your installed fonts so edited text matches the original
+  engine-worker.mjs  runs the engine off the UI thread, so nothing ever freezes
+  main.js            window, files, dialogs, printing
+  preload.js         the narrow bridge between the two halves
+  renderer/          the interface: viewer, tools, dialogs, menus
+test/                engine tests, scripted UI runs, windows build check
+docs/                logo and screenshots
 ```
 
 ## what it doesn't do (yet)
 
-Honesty is free too.
+Honesty is also free.
 
-- **OCR** for scanned documents.
-- **Certificate-based digital signatures** (the cryptographic kind). The "sign" tool places a visible signature, like every free fill-and-sign tool does.
-- **Reflowing whole paragraphs** when you edit text. Editing works line by line.
-- XFA forms (the cursed ones), PDF/A conversion, comparing two documents.
+- **OCR** for scanned documents
+- **certificate-based digital signatures** (the cryptographic kind). "sign" places a visible signature, which is what most people mean by signing.
+- **reflowing whole paragraphs** when editing. editing works line by line.
+- XFA forms (the cursed kind), PDF/A conversion, comparing two documents
 
 Pull requests welcome. Angry ones especially.
 
 ## license
 
-**GNU AGPL v3 or later.** See [LICENSE](LICENSE).
+**AGPL-3.0-or-later.** See [LICENSE](LICENSE).
 
-That means it's free forever, and anyone who ships a modified version has to publish their source too. Nobody gets to take this, bolt a paywall onto it, and sell it back to you. That's not an accident; that's the point.
-
-MuPDF is © Artifex Software and is also AGPL. Electron is MIT.
-
-## the boring legal bit
-
-fuck pdf is not affiliated with, endorsed by, or in any way related to Adobe, Tracker Software, or anyone else who makes PDF software. No code from any of them was used. "Acrobat" and "PDF-XChange" are trademarks of their respective owners, and they can keep them. We just wanted to fix a typo without a credit card.
+Free forever, and anyone who ships a modified version has to publish their source too. Nobody gets to take this, bolt a paywall on it, and sell it back to you. That's not an accident. That's the point.
 
 ---
 
-```
-no subscription. no account. no telemetry. no watermark. no bullshit.
-```
+<p align="center"><code>no subscription. no account. no telemetry. no watermark. no bullshit.</code></p>

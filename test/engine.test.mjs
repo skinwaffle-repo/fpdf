@@ -322,6 +322,18 @@ test("non-pdf docs convert on open", () => {
 	eq(img.pageCount, 1);
 });
 
+test("links: external + internal destinations", () => {
+	const d = E.open(fx("links.pdf"), "links.pdf");
+	const ls = E.links(d.id, 0);
+	const web = ls.find((l) => l.uri.startsWith("https://example.com"));
+	ok(web && web.external, "external link found: " + JSON.stringify(ls.map((l) => l.uri)));
+	const internal = ls.find((l) => !l.external);
+	ok(internal && internal.page === 1, "internal link resolves to page 2: " + JSON.stringify(internal));
+	ok(internal.y != null && Math.abs(internal.y - (842 - 500)) < 2, "internal link keeps its y: " + internal.y);
+	ok(ls.some((l) => l.uri.startsWith("file:")), "file link is reported (the UI blocks it)");
+	ok(web.rect[1] < 100, "link rect is in page space (top of page)");
+});
+
 test("new blank + ranges", () => {
 	const b = E.newBlank(595, 842, 2);
 	eq(b.pageCount, 2);

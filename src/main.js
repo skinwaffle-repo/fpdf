@@ -156,7 +156,7 @@ function createWindow() {
 	win.once("ready-to-show", () => win.show());
 
 	win.webContents.setWindowOpenHandler(({ url }) => {
-		if (/^https?:/.test(url)) shell.openExternal(url);
+		if (/^(https?:|mailto:)/i.test(url)) shell.openExternal(url);
 		return { action: "deny" };
 	});
 	win.webContents.on("will-navigate", (e) => e.preventDefault());
@@ -385,7 +385,8 @@ ipcMain.handle("app:info", () => ({
 ipcMain.handle("shell:show", (_e, file) => shell.showItemInFolder(file));
 ipcMain.handle("shell:openPath", (_e, p) => shell.openPath(p));
 ipcMain.handle("shell:external", (_e, url) => {
-	if (/^https?:\/\//.test(url)) shell.openExternal(url);
+	// only web + email links ever leave the app
+	if (/^(https?:\/\/|mailto:)/i.test(String(url || ""))) shell.openExternal(url);
 });
 ipcMain.handle("app:devtools", () => win && win.webContents.toggleDevTools());
 ipcMain.handle("app:fullscreen", () => win && win.setFullScreen(!win.isFullScreen()));

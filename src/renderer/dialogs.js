@@ -1,7 +1,7 @@
 // fuck pdf - dialogs. each returns plain options (or null when cancelled).
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { el, modal, row, hex2rgb, rgb2hex, PALETTE, toast } from "./ui.js";
-import { FINGER, BANNER } from "./ascii.js";
+import { BANNER, drawFinger } from "./ascii.js";
 import { S, api } from "./state.js";
 
 const PAGE_SIZES = {
@@ -439,7 +439,7 @@ export async function aboutDialog() {
 	const info = await api.appInfo();
 	const body = el("div.about", {},
 		el("div", { style: { display: "flex", gap: "28px", alignItems: "center" } },
-			el("pre", { style: { fontSize: "10px" } }, FINGER),
+			drawFinger(300),
 			el("div", {},
 				el("pre", { style: { fontWeight: 700, fontSize: "11px" } }, BANNER),
 				el("p", {}, `version ${info.version}`),

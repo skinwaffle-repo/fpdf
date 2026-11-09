@@ -1,7 +1,7 @@
 {
   "name": "fuck-pdf",
   "productName": "fuck pdf",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "fuck pdf - a free, open-source PDF viewer and editor. No subscriptions. No paywalls.",
   "main": "src/main.js",
   "author": "fuck pdf contributors",
@@ -10,9 +10,11 @@
     "start": "electron .",
     "test": "node test/engine.test.mjs",
     "dist:win": "electron-builder --win --x64",
-    "test:ui": "xvfb-run -a node test/ui/doc.mjs",
+    "test:ui": "xvfb-run -a node test/ui/doc.mjs && xvfb-run -a node test/ui/edit-links.mjs",
     "icon": "python3 scripts/make-icon.py",
-    "test:win": "cd dist/win-unpacked && WINEDEBUG=-all ELECTRON_RUN_AS_NODE=1 wine \"fuck pdf.exe\" ../../test/win-smoke.mjs > ../../test/out/win-smoke.log 2>&1; cat ../../test/out/win-smoke.json"
+    "test:win": "cd dist/win-unpacked && WINEDEBUG=-all ELECTRON_RUN_AS_NODE=1 wine \"fuck pdf.exe\" ../../test/win-smoke.mjs > ../../test/out/win-smoke.log 2>&1; cat ../../test/out/win-smoke.json",
+    "screenshots": "xvfb-run -a -s \"-screen 0 1600x1000x24\" node test/ui/screenshots.mjs",
+    "demo": "python3 scripts/make-demo.py test/fixtures/demo.pdf"
   },
   "dependencies": {
     "mupdf": "^1.28.6"

@@ -1,6 +1,6 @@
 // fuck pdf - page viewer: layout, rendering, overlays and every tool's mouse handling.
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { S, cur, E, op, bus, pageVersion, api, cleanErr } from "./state.js";
+import { S, cur, E, op, bus, pageVersion, api, cleanErr, annotName } from "./state.js";
 import { el, svg, toast, hex2rgb, rgb2hex, popupMenu, promptBox, modal, modalOpen } from "./ui.js";
 
 const viewer = document.getElementById("viewer");
@@ -287,6 +287,73 @@ async function renderOne(doc, i) {
 	v.rv = pv;
 	v.el.classList.remove("loading");
 	await ensureOverlay(doc, i, true);
+	const waiters = renderWaiters.get(i);
+	if (waiters) {
+		renderWaiters.delete(i);
+		for (const w of waiters) if (pageVersion(doc, i) === pv) w(); else (renderWaiters.get(i) || renderWaiters.set(i, []).get(i)).push(w);
+	}
+}
+
+const renderWaiters = new Map();
+/** Resolves once page i has been re-rendered at its current version (or after a timeout). */
+function waitRendered(i, ms = 4000) {
+	return new Promise((resolve) => {
+		const t = setTimeout(resolve, ms);
+		const list = renderWaiters.get(i) || [];
+		list.push(() => { clearTimeout(t); resolve(); });
+		renderWaiters.set(i, list);
+		scheduleRender();
+	});
+}
+
+// --------------------------------------------------------- colour helpers
+function lum(hex) {
+	const [r, g, b] = hex2rgb(hex).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a, b) {
+	const x = lum(a), y = lum(b);
+	return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+/** The colour actually painted behind a box on the page (most common pixel colour). */
+function sampleBackground(doc, i, rect) {
+	const v = views[i];
+	const p = doc.info.pages[i];
+	const c = v && v.canvas;
+	if (!c || !c.width) return "#ffffff";
+	const sx = c.width / p.w, sy = c.height / p.h;
+	const pad = 3;
+	const x0 = Math.max(0, Math.floor((rect[0] - p.bounds[0]) * sx) - pad);
+	const y0 = Math.max(0, Math.floor((rect[1] - p.bounds[1]) * sy) - pad);
+	const x1 = Math.min(c.width, Math.ceil((rect[2] - p.bounds[0]) * sx) + pad);
+	const y1 = Math.min(c.height, Math.ceil((rect[3] - p.bounds[1]) * sy) + pad);
+	if (x1 <= x0 || y1 <= y0) return "#ffffff";
+	let data;
+	try { data = c.getContext("2d").getImageData(x0, y0, x1 - x0, y1 - y0).data; } catch { return "#ffffff"; }
+	const counts = new Map();
+	let best = 0, bestKey = 0xffffff;
+	const step = Math.max(1, Math.floor((data.length / 4) / 6000));
+	for (let k = 0; k < data.length; k += 4 * step) {
+		const key = ((data[k] >> 3) << 10) | ((data[k + 1] >> 3) << 5) | (data[k + 2] >> 3);
+		const n = (counts.get(key) || 0) + 1;
+		counts.set(key, n);
+		if (n > best) { best = n; bestKey = key; }
+	}
+	const r = ((bestKey >> 10) & 31) * 8 + 4, g = ((bestKey >> 5) & 31) * 8 + 4, b = (bestKey & 31) * 8 + 4;
+	return "#" + [r, g, b].map((x) => Math.min(255, x).toString(16).padStart(2, "0")).join("");
+}
+
+/** Background + text colours for an in-place editor that hides the original and stays readable. */
+function editorColours(doc, i, rect, textHex) {
+	let bg = sampleBackground(doc, i, rect);
+	let fg = textHex || "#000000";
+	if (contrast(bg, fg) < 3) {
+		// light text on a light page (or dark on dark): keep the text colour, flip the patch
+		bg = contrast("#111111", fg) >= contrast("#ffffff", fg) ? "#111111" : "#ffffff";
+		if (contrast(bg, fg) < 3) fg = bg === "#ffffff" ? "#000000" : "#ffffff";
+	}
+	return { bg, fg };
 }
 
 // -------------------------------------------------------------- page data
@@ -294,11 +361,12 @@ export async function pageData(doc, i, { lines = false } = {}) {
 	const v = pageVersion(doc, i);
 	let c = doc.cache.get(i);
 	if (!c || c.v !== v) {
-		c = { v, annots: null, widgets: null, lines: null, p: {} };
+		c = { v, annots: null, widgets: null, lines: null, links: null, p: {} };
 		doc.cache.set(i, c);
 	}
 	if (!c.annots) c.annots = await (c.p.a ||= E("annotations", doc.id, i).catch(() => []));
 	if (!c.widgets) c.widgets = doc.info.hasForms ? await (c.p.w ||= E("widgets", doc.id, i).catch(() => [])) : [];
+	if (!c.links) c.links = await (c.p.k ||= E("links", doc.id, i).catch(() => []));
 	if (lines && !c.lines) c.lines = await (c.p.l ||= E("pageLines", doc.id, i).catch(() => []));
 	return c;
 }
@@ -331,7 +399,9 @@ export function drawOverlay(i) {
 	if (!doc || !v) return;
 	const ov = v.ov;
 	const ghost = ov.querySelector(".ghostg");
+	const tip = ov.querySelector(":scope > title");
 	ov.replaceChildren();
+	if (tip) ov.append(tip);
 	const c = cached(doc, i);
 	// form fields
 	if (c && c.widgets && (S.tool === "select" || S.tool === "hand")) {
@@ -344,7 +414,7 @@ export function drawOverlay(i) {
 	if (c && c.lines && S.tool === "edittext") {
 		for (const l of c.lines) {
 			const hot = hoverLine && hoverLine.page === i && hoverLine.line.index === l.index;
-			ov.append(svg("rect", { class: "line-box", x: l.bbox[0] - 1, y: l.bbox[1] - 1, width: l.bbox[2] - l.bbox[0] + 2, height: l.bbox[3] - l.bbox[1] + 2, style: hot ? "fill:rgba(0,120,255,0.16)" : "opacity:0.45" }));
+			ov.append(svg("rect", { class: "line-box", x: l.bbox[0] - 1, y: l.bbox[1] - 1, width: l.bbox[2] - l.bbox[0] + 2, height: l.bbox[3] - l.bbox[1] + 2, style: hot ? "fill:none;stroke-dasharray:none;stroke-width:1.6" : "opacity:0.45" }));
 		}
 	}
 	// search hits
@@ -447,7 +517,9 @@ pagesEl.addEventListener("pointerdown", async (e) => {
 	if (inline) commitInline();
 	viewer.focus({ preventScroll: true });
 	if (e.button === 1 || S.tool === "hand") {
-		startPan(e);
+		const v0 = viewFromEvent(e);
+		const link = e.button === 0 && v0 ? hitLink(cached(doc, v0.i), pagePoint(v0, e)) : null;
+		startPan(e, link ? () => followLink(doc, link) : null);
 		return;
 	}
 	if (e.button !== 0) return;
@@ -523,7 +595,7 @@ pagesEl.addEventListener("contextmenu", (e) => {
 	const items = [];
 	if (a) {
 		selectAnnot(doc, v.i, a);
-		items.push({ label: "delete " + a.type.toLowerCase(), key: "del", action: () => deleteSelectedAnnot() });
+		items.push({ label: "delete " + annotName(a), key: "del", action: () => deleteSelectedAnnot() });
 		if (a.type === "FreeText") items.push({ label: "edit text", action: () => editFreeText(doc, v.i, a) });
 		items.push({ label: "edit comment", action: () => editNote(doc, v.i, a) });
 		items.push("-");
@@ -549,16 +621,19 @@ pagesEl.addEventListener("contextmenu", (e) => {
 
 // -------------------------------------------------------------- panning
 let panning = null;
-function startPan(e) {
+function startPan(e, onClick = null) {
 	e.preventDefault();
-	panning = { x: e.clientX, y: e.clientY, top: viewer.scrollTop, left: viewer.scrollLeft };
+	panning = { x: e.clientX, y: e.clientY, top: viewer.scrollTop, left: viewer.scrollLeft, moved: false };
 	viewer.classList.add("panning");
 	const move = (ev) => {
+		if (Math.abs(ev.clientY - panning.y) + Math.abs(ev.clientX - panning.x) > 3) panning.moved = true;
 		viewer.scrollTop = panning.top - (ev.clientY - panning.y);
 		viewer.scrollLeft = panning.left - (ev.clientX - panning.x);
 	};
 	const up = () => {
+		const clicked = panning && !panning.moved;
 		panning = null;
+		if (clicked && onClick) onClick();
 		viewer.classList.remove("panning");
 		window.removeEventListener("pointermove", move);
 		window.removeEventListener("pointerup", up);
@@ -577,6 +652,27 @@ function hitAnnot(c, pt, zoom) {
 	}
 	return null;
 }
+function hitLink(c, pt) {
+	if (!c || !c.links) return null;
+	return c.links.find((l) => inRect(pt, l.rect, 1)) || null;
+}
+
+const SAFE_URI = /^(https?:|mailto:)/i;
+export function followLink(doc, link) {
+	if (!link) return;
+	if (!link.external && link.page != null && link.page >= 0) {
+		goToPage(link.page, { y: link.y != null ? link.y : null });
+		return;
+	}
+	const uri = String(link.uri || "").trim();
+	if (SAFE_URI.test(uri)) {
+		api.openExternal(uri);
+		toast("opening " + (uri.length > 70 ? uri.slice(0, 70) + "..." : uri));
+	} else if (uri) {
+		toast("blocked a link to:\n" + uri.slice(0, 120) + "\nonly web and email links are opened.", { error: true });
+	}
+}
+
 function hitWidget(c, pt) {
 	if (!c || !c.widgets) return null;
 	return c.widgets.find((w) => inRect(pt, w.rect)) || null;
@@ -596,11 +692,20 @@ function hitHandle(doc, i, pt) {
 
 function hover(doc, v, pt) {
 	const c = cached(doc, v.i);
-	if (S.tool === "select") {
-		const overA = !!(c && (hitAnnot(c, pt, doc.zoom) || hitHandle(doc, v.i, pt)));
-		const overW = !overA && !!(c && hitWidget(c, pt));
+	if (S.tool === "select" || S.tool === "hand") {
+		const overA = S.tool === "select" && !!(c && (hitAnnot(c, pt, doc.zoom) || hitHandle(doc, v.i, pt)));
+		const overW = S.tool === "select" && !overA && !!(c && hitWidget(c, pt));
+		const link = !overA && !overW && c ? hitLink(c, pt) : null;
 		v.ov.classList.toggle("over-annot", overA);
 		v.ov.classList.toggle("over-widget", overW);
+		v.ov.classList.toggle("over-link", !!link);
+		const tip = link ? (link.external ? link.uri : `go to page ${(link.page ?? 0) + 1}`) : "";
+		if ((v.ov.getAttribute("data-tip") || "") !== tip) {
+			v.ov.setAttribute("data-tip", tip);
+			let t = v.ov.querySelector(":scope > title");
+			if (!t) { t = svg("title"); v.ov.prepend(t); }
+			t.textContent = tip;
+		}
 	} else if (S.tool === "edittext") {
 		if (!c || !c.lines) { ensureOverlay(doc, v.i, true); return; }
 		const line = c.lines.find((l) => inRect(pt, l.bbox, 1.5)) || null;
@@ -790,7 +895,18 @@ const TOOLS = {
 				drawOverlay(p);
 				bus.emit("annot-selected", doc);
 			}
-			return textSelectDrag(doc, i, pt);
+			const link = hitLink(c, pt);
+			const sel = textSelectDrag(doc, i, pt);
+			if (!link) return sel;
+			// a click follows the link, a drag starting on it still selects text
+			return {
+				move: (q, ev) => sel.move(q, ev),
+				up: async (q, ev, moved) => {
+					if (moved) return sel.up(q, ev, moved);
+					await sel.up(q, ev, false);
+					followLink(doc, link);
+				},
+			};
 		},
 	},
 	highlight: markupTool("highlight"),
@@ -1075,11 +1191,20 @@ async function commitInline() {
 	if (!inline) return;
 	const it = inline;
 	inline = null;
-	it.node.remove();
+	const value = it.node.value;
+	if (!it.holdPage && it.holdPage !== 0) it.node.remove();
+	else {
+		it.node.readOnly = true;
+		it.node.blur();
+	}
 	try {
-		await it.commit(it.node.value);
+		const changed = await it.commit(value);
+		// keep the patch over the old text until the page has been redrawn, so it never flashes back
+		if (changed !== false && it.holdPage != null) await waitRendered(it.holdPage);
 	} catch (e) {
 		toast(cleanErr(e), { error: true });
+	} finally {
+		it.node.remove();
 	}
 }
 
@@ -1100,20 +1225,27 @@ function openLineEditor(doc, i, line) {
 	const input = el("input.inline-edit", { type: "text", value: line.text, spellcheck: false });
 	const size = ed.size || line.size;
 	const v = views[i];
+	// cover a little more than the glyph box so no ascender/descender of the old text peeks out
+	const padY = Math.max(1, (line.bbox[3] - line.bbox[1]) * 0.12);
+	const box = [line.bbox[0] - 2, line.bbox[1] - padY, line.bbox[2] + 2, line.bbox[3] + padY];
+	const colours = editorColours(doc, i, line.bbox, ed.color || rgb2hex(line.color));
 	const place = () => {
-		placeAt(input, doc, i, line.bbox[0] - 1, line.bbox[1] - 1);
-		input.style.height = (line.bbox[3] - line.bbox[1] + 2) * doc.zoom + "px";
+		placeAt(input, doc, i, box[0], box[1]);
+		input.style.height = (box[3] - box[1]) * doc.zoom + "px";
 		input.style.fontSize = size * doc.zoom + "px";
+		input.style.paddingLeft = 2 * doc.zoom + "px";
 		fit();
 	};
 	const fit = () => {
 		input.style.width = "0px";
-		input.style.width = Math.max((line.bbox[2] - line.bbox[0] + 4) * doc.zoom, input.scrollWidth + 8) + "px";
+		input.style.width = Math.max((box[2] - box[0]) * doc.zoom, input.scrollWidth + 8) + "px";
 	};
-	input.style.fontFamily = FONT_CSS[fam] || FONT_CSS.helv;
+	const keepFont = !ed.family || ed.family === "original";
+	input.style.fontFamily = (keepFont && line.cssFamily ? `"${line.cssFamily.replace(/"/g, "")}", ` : "") + (FONT_CSS[fam] || FONT_CSS.helv);
 	input.style.fontWeight = (ed.bold ?? line.bold) ? "700" : "400";
 	input.style.fontStyle = (ed.italic ?? line.italic) ? "italic" : "normal";
-	input.style.color = ed.color || rgb2hex(line.color) || "#000";
+	input.style.color = colours.fg;
+	input.style.background = colours.bg;
 	input.addEventListener("input", fit);
 	input.addEventListener("keydown", (e) => {
 		e.stopPropagation();
@@ -1124,9 +1256,9 @@ function openLineEditor(doc, i, line) {
 	v.layer.append(input);
 	place();
 	inline = {
-		node: input, place,
+		node: input, place, holdPage: i,
 		commit: async (value) => {
-			if (value === line.text && !ed.size && !ed.color && ed.bold == null && ed.italic == null && (!ed.family || ed.family === "original")) return;
+			if (value === line.text && !ed.size && !ed.color && ed.bold == null && ed.italic == null && (!ed.family || ed.family === "original")) return false;
 			const opts = {};
 			if (ed.family && ed.family !== "original") opts.family = ed.family;
 			if (ed.bold != null) opts.bold = ed.bold;
@@ -1162,7 +1294,13 @@ function openTextEditor(doc, i, pt, existing = null) {
 		ta.style.height = ta.scrollHeight + 4 + "px";
 	};
 	ta.style.fontFamily = FONT_CSS[fam];
-	ta.style.color = col;
+	const colours = editorColours(doc, i, existing ? existing.rect : [pt[0], pt[1] - size, pt[0] + size * 4, pt[1] + size * 0.3], col);
+	ta.style.color = colours.fg;
+	ta.style.background = colours.bg;
+	if (existing) {
+		ta.style.minWidth = (existing.rect[2] - existing.rect[0]) * doc.zoom + "px";
+		ta.style.minHeight = (existing.rect[3] - existing.rect[1]) * doc.zoom + "px";
+	}
 	ta.style.whiteSpace = "pre";
 	ta.addEventListener("input", grow);
 	ta.addEventListener("keydown", (e) => {
@@ -1174,7 +1312,7 @@ function openTextEditor(doc, i, pt, existing = null) {
 	views[i].layer.append(ta);
 	place();
 	inline = {
-		node: ta, place,
+		node: ta, place, holdPage: existing ? i : null,
 		commit: async (value) => {
 			const text = value.replace(/\s+$/, "");
 			// measure the text the way it will be drawn
