@@ -119,6 +119,8 @@ The exe isn't signed, because signing certificates cost money every year and see
 
 ## build it yourself
 
+You need Node.js 20 or newer.
+
 ```sh
 npm install
 npm start            # run it
@@ -127,7 +129,7 @@ npm run test:ui      # drives the real app and clicks through it
 npm run dist:win     # windows portable exe + installer, into dist/
 ```
 
-The portable exe builds on any OS. Build the installer on Windows.
+The portable exe builds on any OS. Building the installer on Linux needs Wine.
 
 ```
 src/
@@ -152,11 +154,38 @@ Honesty is also free.
 
 Pull requests welcome. Angry ones especially.
 
+## credits
+
+fuck pdf stands on the shoulders of people who give their work away for free. Respect.
+
+**inside the app** (ships in the exe)
+
+| what | does | license |
+|---|---|---|
+| [MuPDF](https://mupdf.com) by Artifex Software | the actual PDF engine: rendering, text, annotations, redaction, forms, encryption, page surgery. the heavy lifting is all theirs. | AGPL-3.0-or-later |
+| [Electron](https://www.electronjs.org), with Chromium and Node.js inside | the window and the runtime | MIT (Chromium's own licenses ship in the app folder as `LICENSES.chromium.html`) |
+
+**used to build, test and draw it** (not shipped)
+
+| what | used for | license |
+|---|---|---|
+| [electron-builder](https://www.electron.build) | packaging the portable exe and the installer | MIT |
+| [NSIS](https://nsis.sourceforge.io) | the installer itself | zlib/libpng |
+| [resedit](https://github.com/jet2jet/resedit-js) | stamping the icon and version info into the exe | MIT |
+| [Wine](https://www.winehq.org) | building the installer on Linux, testing the Windows build | LGPL-2.1-or-later |
+| [Playwright](https://playwright.dev) | driving the real app for UI tests and screenshots | Apache-2.0 |
+| [ReportLab](https://www.reportlab.com/opensource/) | generating the test and demo PDFs | BSD |
+| [Pillow](https://python-pillow.org) | rendering the icon and the logo | MIT-CMU |
+| [pyfiglet](https://github.com/pwaller/pyfiglet) and the FIGlet "slant" font by Glenn Chappell | the FUCK PDF banner | MIT / FIGlet font license |
+| [DejaVu fonts](https://dejavu-fonts.github.io) | the logo, the screenshots, the test documents | Bitstream Vera / DejaVu license |
+
+**the finger:** skeleton middle finger dot art, found on a dot-art site, artist unknown. If it's yours, open an issue and your name goes right here.
+
 ## license
 
 **AGPL-3.0-or-later.** See [LICENSE](LICENSE).
 
-Free forever, and anyone who ships a modified version has to publish their source too. Nobody gets to take this, bolt a paywall on it, and sell it back to you. That's not an accident. That's the point.
+Free forever, and anyone who ships a modified version has to publish their source too. Nobody gets to take this, bolt a paywall on it, and sell it back to you. That's not an accident. That's the point. (It's also the license of MuPDF, the engine inside, so it would be AGPL either way. Happy coincidence.)
 
 ---
 
