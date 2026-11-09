@@ -72,6 +72,7 @@ function startWorker() {
 		} else p.resolve(msg.result);
 	});
 	worker.on("error", (e) => {
+		console.error("engine worker error:", e);
 		for (const p of pending.values()) p.reject(e);
 		pending.clear();
 		if (win) win.webContents.send("engine-crashed", String(e && e.message || e));
@@ -195,7 +196,43 @@ function createWindow() {
 app.whenReady().then(() => {
 	startWorker();
 	createWindow();
+	if (process.env.FPDF_SELFTEST) selfTest(process.env.FPDF_SELFTEST, process.env.FPDF_SELFTEST_FILE);
 });
+
+// Build verification: FPDF_SELFTEST=<out prefix> FPDF_SELFTEST_FILE=<pdf> "fuck pdf.exe"
+// exercises the packaged engine end to end, writes a report and quits.
+async function selfTest(out, file) {
+	const report = { platform: process.platform, electron: process.versions.electron, steps: [] };
+	const step = (n) => { report.steps.push(n); fs.writeFileSync(out + ".json", JSON.stringify(report, null, 1)); };
+	const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout: " + what)), ms))]);
+	try {
+		step("start");
+		report.ping = await withTimeout(call("dirtyDocs"), 30000, "engine worker start");
+		step("worker ok");
+		const info = await withTimeout(call("open", new Uint8Array(fs.readFileSync(file)), path.basename(file), file, null), 30000, "open");
+		report.pages = info.pageCount;
+		step("opened");
+		const lines = await call("pageLines", info.id, 0);
+		report.lines = lines.length;
+		if (lines.length) {
+			await call("editLine", info.id, 0, lines[Math.min(2, lines.length - 1)], "edited by the self test: Zażółć gęślą jaźń");
+		}
+		step("edited");
+		report.systemFonts = (await call("systemFonts")).length;
+		step("fonts");
+		fs.writeFileSync(out + "-page.png", await call("renderPNG", info.id, 0, 96, "png"));
+		const saved = await call("saveBytes", info.id, { security: "set", userPassword: "test" });
+		report.encryptedBytes = saved.length;
+		await new Promise((r) => setTimeout(r, 6000));
+		if (win) fs.writeFileSync(out + "-window.png", (await win.webContents.capturePage()).toPNG());
+		report.ok = true;
+	} catch (e) {
+		report.error = String((e && e.stack) || e);
+	}
+	fs.writeFileSync(out + ".json", JSON.stringify(report, null, 1));
+	allowClose = true;
+	app.quit();
+}
 
 app.on("window-all-closed", () => {
 	if (worker) worker.terminate();

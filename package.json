@@ -11,7 +11,8 @@
     "test": "node test/engine.test.mjs",
     "dist:win": "electron-builder --win --x64",
     "test:ui": "xvfb-run -a node test/ui/doc.mjs",
-    "icon": "python3 scripts/make-icon.py"
+    "icon": "python3 scripts/make-icon.py",
+    "test:win": "cd dist/win-unpacked && WINEDEBUG=-all ELECTRON_RUN_AS_NODE=1 wine \"fuck pdf.exe\" ../../test/win-smoke.mjs > ../../test/out/win-smoke.log 2>&1; cat ../../test/out/win-smoke.json"
   },
   "dependencies": {
     "mupdf": "^1.28.6"
