@@ -392,6 +392,34 @@ func defaultInstallDir() string {
 	return ""
 }
 
+func programFilesDirs() []string {
+	var out []string
+	for _, k := range []string{"ProgramW6432", "ProgramFiles", "ProgramFiles(x86)"} {
+		if v := os.Getenv(k); v != "" {
+			out = append(out, filepath.Clean(v))
+		}
+	}
+	return out
+}
+
+func defaultMachineDir() string {
+	for _, pf := range programFilesDirs() {
+		return filepath.Join(pf, "fuck pdf")
+	}
+	return `C:\Program Files\fuck pdf`
+}
+
+// installed "for all users" (under Program Files) rather than per user
+func isPerMachine(dir string) bool {
+	d := strings.ToLower(filepath.Clean(dir)) + string(filepath.Separator)
+	for _, pf := range programFilesDirs() {
+		if strings.HasPrefix(d, strings.ToLower(pf)+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
 func readInstalledVersion(dir string) (semver, bool) {
 	b, err := os.ReadFile(filepath.Join(dir, "resources", "app", "package.json"))
 	if err != nil {
@@ -668,16 +696,41 @@ func copyFile(src, dst string) error {
 
 // ------------------------------------------------------------------ install
 
-func installSetup(file string, target Target) error {
-	args := []string{"/S"}
-	if target.Kind == "installed" && target.Dir != "" && !strings.EqualFold(filepath.Clean(target.Dir), filepath.Clean(defaultInstallDir())) {
+// installerArgs: silent, same scope (all users / just me) and folder as the existing install
+func installerArgs(target Target) (args []string, machine bool) {
+	args = []string{"/S"}
+	def := defaultInstallDir()
+	if target.Kind == "installed" && isPerMachine(target.Dir) {
+		machine = true
+		args = append(args, "/allusers")
+		def = defaultMachineDir()
+	} else {
+		args = append(args, "/currentuser")
+	}
+	if target.Kind == "installed" && target.Dir != "" && !strings.EqualFold(filepath.Clean(target.Dir), filepath.Clean(def)) {
 		args = append(args, "/D="+target.Dir) // must be last, unquoted (NSIS rule)
 	}
-	say("installing (silent)...")
-	cmd := exec.Command(file, args...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("installer failed: %v", err)
+	return args, machine
+}
+
+func installSetup(file string, target Target, forceElevate bool) error {
+	args, machine := installerArgs(target)
+	if machine && (forceElevate || !isAdmin()) {
+		say("installing for all users (windows will ask for admin rights)...")
+		code, err := runElevated(file, args)
+		if err != nil {
+			return err
+		}
+		if code != 0 {
+			return fmt.Errorf("installer exited with code %d", code)
+		}
+	} else {
+		say("installing (silent)...")
+		if err := exec.Command(file, args...).Run(); err != nil {
+			return fmt.Errorf("installer failed: %v", err)
+		}
 	}
+	refreshIcons()
 	return nil
 }
 
@@ -793,6 +846,7 @@ func main() {
 		fromTemp   = flag.Bool("from-temp", false, "internal")
 		selfDelete = flag.Bool("self-delete", false, "internal")
 		showVer    = flag.Bool("version", false, "print version")
+		elevate    = flag.Bool("force-elevate", false, "internal: always use the admin prompt path")
 		sources    multi
 	)
 	flag.Var(&sources, "source", "github:owner/repo or folder:C:\\path (repeatable, overrides config)")
@@ -856,6 +910,7 @@ func main() {
 	if *selfDelete {
 		defer scheduleSelfDelete()
 	}
+	forceElevate = *elevate
 	setTitle("fuck pdf updater")
 	fmt.Print(banner)
 	fmt.Println()
@@ -871,10 +926,16 @@ func main() {
 	os.Exit(code)
 }
 
+var forceElevate bool // testing aid: take the elevated path even when already admin
+
 func run(cfg Config, target Target, kind string, yes bool, waitPid int, noRelaunch bool) int {
 	switch target.Kind {
 	case "installed":
-		say("installed:  %s   (%s)", target.Version, target.Dir)
+		scope := "just you"
+		if isPerMachine(target.Dir) {
+			scope = "all users"
+		}
+		say("installed:  %s   (%s, %s)", target.Version, target.Dir, scope)
 	case "portable":
 		cur := "unknown"
 		if target.HasVer {
@@ -957,13 +1018,16 @@ func run(cfg Config, target Target, kind string, yes bool, waitPid int, noRelaun
 			return 1
 		}
 	} else {
-		if err := installSetup(file, target); err != nil {
+		if err := installSetup(file, target, forceElevate); err != nil {
 			warn("%v", err)
 			return 1
 		}
 		dir := target.Dir
 		if dir == "" {
 			dir = defaultInstallDir()
+		}
+		if target.Kind == "none" {
+			say("installed for the current user in %s", dir)
 		}
 		if v, ok := readInstalledVersion(dir); ok && v.cmp(rel.Version) == 0 {
 			target.Exe = filepath.Join(dir, appExe)

@@ -1,7 +1,7 @@
 {
   "name": "fuck-pdf",
   "productName": "fuck pdf",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "fuck pdf - a free, open-source PDF viewer and editor. No subscriptions. No paywalls.",
   "main": "src/main.js",
   "author": "fuck pdf contributors",
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node test/engine.test.mjs",
-    "dist:win": "node scripts/build-updater.cjs && electron-builder --win --x64 && node scripts/checksums.cjs",
+    "dist:win": "node scripts/build-updater.cjs && electron-builder --config electron-builder.config.cjs --win --x64 && node scripts/checksums.cjs",
     "test:ui": "xvfb-run -a node test/ui/doc.mjs && xvfb-run -a node test/ui/edit-links.mjs",
     "icon": "python3 scripts/make-icon.py",
     "test:win": "cd dist/win-unpacked && WINEDEBUG=-all ELECTRON_RUN_AS_NODE=1 wine \"fuck pdf.exe\" ../../test/win-smoke.mjs > ../../test/out/win-smoke.log 2>&1; cat ../../test/out/win-smoke.json",
@@ -26,80 +26,6 @@
     "electron-builder": "^26.18.0",
     "playwright-core": "^1.65.0",
     "resedit": "^3.1.0"
-  },
-  "build": {
-    "appId": "org.fuckpdf.app",
-    "productName": "fuck pdf",
-    "copyright": "AGPL-3.0-or-later",
-    "asar": false,
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "files": [
-      "src/**/*",
-      "build/icon.ico",
-      "build/icon.png",
-      "package.json",
-      "LICENSE",
-      "!**/*.br",
-      "!**/*.d.ts",
-      "!node_modules/mupdf/README.md"
-    ],
-    "afterPack": "scripts/after-pack.cjs",
-    "fileAssociations": [
-      {
-        "ext": "pdf",
-        "name": "PDF Document",
-        "description": "PDF Document",
-        "role": "Editor",
-        "icon": "build/icon.ico"
-      }
-    ],
-    "win": {
-      "icon": "build/icon.ico",
-      "signAndEditExecutable": false,
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "portable": {
-      "artifactName": "fuck-pdf-${version}-portable.exe"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "artifactName": "fuck-pdf-${version}-setup.exe",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "fuck pdf",
-      "license": "LICENSE",
-      "include": "build/installer.nsh"
-    },
-    "extraResources": [
-      {
-        "from": "dist-updater",
-        "to": "updater",
-        "filter": [
-          "fuck-pdf-updater.exe",
-          "updater.json"
-        ]
-      }
-    ]
   },
   "repository": {
     "type": "git",

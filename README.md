@@ -112,6 +112,7 @@ fuck pdf updates itself, without a background service, a tray icon, or anything 
 - **help > check for updates** does it right now.
 - **the updater** is a separate little program (start menu: "fuck pdf updater"). it finds the newest version, downloads it, checks its SHA-256 against `SHA256SUMS`, closes fuck pdf (it asks you to save first), installs silently and starts it again. if the checksum doesn't match, it refuses to install, full stop.
 - **portable copies** replace themselves in place.
+- **installed for all users** (Program Files)? it updates that copy, so windows asks for admin rights once per update.
 
 ```
     ____           __                ______

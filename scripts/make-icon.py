@@ -34,12 +34,43 @@ def icon(size):
     im.alpha_composite(f, ((size - f.width) // 2, (size - f.height) // 2 + (1 if not big else 0)))
     return im
 
+def doc_icon(size):
+    """.pdf file icon: a black page with a folded corner, the finger on it, PDF label when there's room."""
+    im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    big = size >= 48
+    w = size * 0.80
+    x0, y0 = (size - w) / 2, size * 0.03
+    x1, y1 = x0 + w, size * 0.97
+    fold = w * 0.26
+    line = max(1, round(size / 64))
+    page = [(x0, y0), (x1 - fold, y0), (x1, y0 + fold), (x1, y1), (x0, y1)]
+    d.polygon(page, fill=(0, 0, 0, 255))
+    d.line(page + [page[0]], fill=(255, 255, 255, 255), width=line, joint="curve")
+    d.polygon([(x1 - fold, y0), (x1 - fold, y0 + fold), (x1, y0 + fold)], fill=(150, 150, 150, 255))
+    d.line([(x1 - fold, y0), (x1 - fold, y0 + fold), (x1, y0 + fold)], fill=(255, 255, 255, 255), width=line)
+    label_h = size * 0.20 if big else 0
+    avail_h = (y1 - y0) - fold * 0.55 - label_h - size * 0.06
+    f = finger(int(avail_h), 0.42 if size >= 128 else 0.8)
+    fx = int((size - f.width) / 2)
+    fy = int(y0 + fold * 0.55 + size * 0.03)
+    im.alpha_composite(f, (fx, fy))
+    if big:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", max(8, int(size * 0.15)))
+        d.text((size / 2, y1 - label_h / 2 - size * 0.015), "PDF", font=font, fill=(255, 255, 255, 255), anchor="mm")
+    return im
+
 os.makedirs("build", exist_ok=True)
 icons = {s: icon(s) for s in (256, 128, 64, 48, 32, 24, 16)}
 icons[256].save("build/icon.png")
 icon(512).save("build/icon-512.png")
 icons[256].save("build/icon.ico", sizes=[(s, s) for s in (16, 24, 32, 48, 64, 128, 256)],
                 append_images=[icons[s] for s in (16, 24, 32, 48, 64, 128)])
+
+docs = {s: doc_icon(s) for s in (256, 128, 64, 48, 32, 24, 16)}
+docs[256].save("build/pdf-file.ico", sizes=[(s, s) for s in (16, 24, 32, 48, 64, 128, 256)],
+               append_images=[docs[s] for s in (16, 24, 32, 48, 64, 128)])
+docs[256].save("build/pdf-file.png")
 
 # README hero: finger + slant banner, white on black
 banner = open("build/banner.txt", encoding="utf-8").read().rstrip("\n").split("\n")
@@ -65,4 +96,10 @@ x = 5
 for s in (256, 128, 64, 48, 32, 16):
     strip.alpha_composite(icons[s], (x, 3)); x += s + 10
 strip.save("/tmp/icon-preview.png")
+for bg in ((255, 255, 255, 255), (32, 32, 32, 255)):
+    st = Image.new("RGBA", (256 + 128 + 64 + 48 + 32 + 24 + 16 + 90, 262), bg)
+    x = 5
+    for s_ in (256, 128, 64, 48, 32, 24, 16):
+        st.alpha_composite(docs[s_], (x, 3)); x += s_ + 12
+    st.save("/tmp/doc-preview-%s.png" % ("light" if bg[0] > 128 else "dark"))
 print("icons + hero ok")

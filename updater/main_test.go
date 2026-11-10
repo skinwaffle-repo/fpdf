@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -70,5 +71,35 @@ func TestInstalledDetection(t *testing.T) {
 	tp := detectTarget("", `C:\x\fuck-pdf-1.1.0-portable.exe`, "1.1.0")
 	if tp.Kind != "portable" || tp.assetKind() != "portable" {
 		t.Fatal(tp)
+	}
+}
+
+func TestInstallerArgsScope(t *testing.T) {
+	pf := t.TempDir()
+	la := t.TempDir()
+	t.Setenv("ProgramW6432", pf)
+	t.Setenv("ProgramFiles", pf)
+	t.Setenv("LOCALAPPDATA", la)
+	join := func(a []string) string { return strings.Join(a, " ") }
+
+	machine := Target{Kind: "installed", Dir: filepath.Join(pf, "fuck pdf")}
+	a, m := installerArgs(machine)
+	if !m || join(a) != "/S /allusers" {
+		t.Fatalf("all-users default: %v %v", a, m)
+	}
+	custom := Target{Kind: "installed", Dir: filepath.Join(pf, "Tools", "fuck pdf")}
+	a, m = installerArgs(custom)
+	if !m || a[len(a)-1] != "/D="+custom.Dir {
+		t.Fatalf("all-users custom dir: %v", a)
+	}
+	user := Target{Kind: "installed", Dir: filepath.Join(la, "Programs", "fuck pdf")}
+	a, m = installerArgs(user)
+	if m || join(a) != "/S /currentuser" {
+		t.Fatalf("per-user default: %v %v", a, m)
+	}
+	fresh := Target{Kind: "none"}
+	a, m = installerArgs(fresh)
+	if m || join(a) != "/S /currentuser" {
+		t.Fatalf("fresh install: %v", a)
 	}
 }
