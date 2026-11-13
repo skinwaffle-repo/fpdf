@@ -1222,7 +1222,9 @@ function openLineEditor(doc, i, line) {
 	closeInline();
 	const ed = S.tp.edit;
 	const fam = ed.family && !ed.family.startsWith("sys:") && ed.family !== "original" ? ed.family : line.family;
-	const input = el("input.inline-edit", { type: "text", value: line.text, spellcheck: false });
+	// fonts without a Unicode map extract as junk: start empty and ask for the line to be retyped
+	const input = el("input.inline-edit", { type: "text", value: line.garbled ? "" : line.text, spellcheck: false });
+	if (line.garbled) input.placeholder = "can't read this font's letters, type the whole line";
 	const size = ed.size || line.size;
 	const v = views[i];
 	// cover a little more than the glyph box so no ascender/descender of the old text peeks out
@@ -1258,6 +1260,8 @@ function openLineEditor(doc, i, line) {
 	inline = {
 		node: input, place, holdPage: i,
 		commit: async (value) => {
+			// an empty commit on a garbled line means "never mind", not "delete it"
+			if (line.garbled && !value.trim()) return false;
 			if (value === line.text && !ed.size && !ed.color && ed.bold == null && ed.italic == null && (!ed.family || ed.family === "original")) return false;
 			const opts = {};
 			if (ed.family && ed.family !== "original") opts.family = ed.family;

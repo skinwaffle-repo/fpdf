@@ -1,7 +1,7 @@
 {
   "name": "fuck-pdf",
   "productName": "fuck pdf",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "fuck pdf - a free, open-source PDF viewer and editor. No subscriptions. No paywalls.",
   "main": "src/main.js",
   "author": "fuck pdf contributors",

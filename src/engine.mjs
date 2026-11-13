@@ -439,7 +439,37 @@ export class Engine {
 		return st;
 	}
 
+	/**
+	 * Names of the fonts on a page whose text can't be read back as real
+	 * letters: no ToUnicode map and a symbolic or Type3 encoding. Design
+	 * tools export labels like this; extraction gives shifted junk
+	 * ("/\"/0.\"9" for "NANOMAX") and the font's own cmap points at the
+	 * wrong glyphs when new text is typed in it.
+	 */
+	_unreadableFonts(rec, index) {
+		const bad = new Set(), good = new Set();
+		const visit = (res, depth) => {
+			if (!res || !res.isDictionary() || depth > 5) return;
+			const fonts = res.get("Font");
+			if (fonts.isDictionary()) fonts.forEach((f) => {
+				const d = safe(() => f.resolve(), null);
+				if (!d || !d.isDictionary()) return;
+				const name = stripSubset(safe(() => d.get("BaseFont").asName(), ""));
+				(safe(() => fontLacksUnicode(d), false) ? bad : good).add(name);
+			});
+			const xo = res.get("XObject");
+			if (xo.isDictionary()) xo.forEach((x) => {
+				const o = safe(() => x.resolve(), null);
+				if (o && safe(() => o.get("Subtype").asName(), "") === "Form") visit(o.get("Resources"), depth + 1);
+			});
+		};
+		safe(() => visit(this._page(rec, index).getObject().getInheritable("Resources"), 0), null);
+		for (const n of good) bad.delete(n);
+		return bad;
+	}
+
 	_lines(rec, index, keepFonts = false) {
+		const unreadable = this._unreadableFonts(rec, index);
 		const st = this._stext(rec, index);
 		const lines = [];
 		let line = null;
@@ -457,11 +487,17 @@ export class Engine {
 			const first = l.chars.find((c) => c.c.trim()) || l.chars[0];
 			const f = first.font;
 			const style = fontStyleFlags(f);
+			const text = l.chars.map((c) => c.c).join("").replace(/\s+$/, "");
+			const visible = [...text].filter((c) => c.trim());
+			const junk = visible.filter((c) => JUNK_CHAR.test(c)).length;
+			const fontBad = l.chars.some((c) => c.font && unreadable.has(stripSubset(c.font.getName())));
 			const out = {
 				index: i,
 				bbox: l.bbox,
 				dir: l.dir,
-				text: l.chars.map((c) => c.c).join("").replace(/\s+$/, ""),
+				text,
+				// the real letters can't be recovered: the editor asks for the line to be retyped
+				garbled: fontBad || (visible.length > 0 && junk / visible.length > 0.3),
 				origin: l.chars[0].origin,
 				size: first.size,
 				color: rgbOf(first.color),
@@ -471,7 +507,11 @@ export class Engine {
 				italic: style.italic,
 				quads: l.chars.map((c) => c.quad),
 			};
-			if (keepFonts) out._font = f;
+			if (keepFonts) {
+				out._font = f;
+				// never write new text in a font whose character map can't be trusted
+				out._fontUsable = !fontBad && junk === 0;
+			}
 			return out;
 		});
 	}
@@ -1005,7 +1045,7 @@ export class Engine {
 				const wantOriginal = !opts.family || opts.family === "original";
 				const bold = opts.bold ?? line.bold, italic = opts.italic ?? line.italic;
 				const styleChanged = (opts.bold != null && opts.bold !== line.bold) || (opts.italic != null && opts.italic !== line.italic);
-				if (wantOriginal && !styleChanged && fontCovers(line._font, newText)) font = line._font;
+				if (wantOriginal && !styleChanged && line._fontUsable && fontCovers(line._font, newText)) font = line._font;
 				if (!font && wantOriginal) {
 					// the embedded font is a subset: use the full installed font
 					const face = this.fonts.match(line.font, { bold, italic });
@@ -1019,7 +1059,14 @@ export class Engine {
 				if (!font) font = this._fontFor(wantOriginal ? line.family : opts.family, bold, italic);
 				const [dx, dy] = normDir(line.dir);
 				const tm = [dx * size, dy * size, dy * size, -dx * size, line.origin[0], line.origin[1]];
-				this._drawText(rec, page, [{ font, text: newText, tm, color }]);
+				try {
+					this._drawText(rec, page, [{ font, text: newText, tm, color }]);
+				} catch (e) {
+					// some fonts (odd embedded subsets, restricted system fonts) refuse to be embedded again
+					const fallback = this._baseFont(line.family, bold, italic);
+					if (font === fallback) throw e;
+					this._drawText(rec, page, [{ font: fallback, text: newText, tm, color }]);
+				}
 			}
 			return { font: line._font ? stripSubset(line._font.getName()) : "" };
 		}, { pages: [index] });
@@ -1644,6 +1691,23 @@ function matchLine(lines, t) {
 		if (score < bestScore) { bestScore = score; best = l; }
 	}
 	return bestScore < 60 ? best : null;
+}
+
+// replacement char, private use area and control codes: what unmapped glyphs extract as
+const JUNK_CHAR = /[\uFFFD\uE000-\uF8FF\u0000-\u0008\u000E-\u001F]/;
+
+/** True when a PDF font dict gives no way to turn its codes back into letters. */
+function fontLacksUnicode(d) {
+	if (!d.get("ToUnicode").isNull()) return false;
+	const sub = safe(() => d.get("Subtype").asName(), "");
+	if (sub === "Type3") return true;
+	if (sub === "Type0") return false; // mupdf extracts U+FFFD there, caught by the text check
+	const flags = safe(() => d.get("FontDescriptor").get("Flags").asNumber(), 0);
+	if (!(flags & 4)) return false; // nonsymbolic: standard encodings name real letters
+	const enc = d.get("Encoding");
+	if (enc.isName()) return false;
+	if (enc.isDictionary() && (!enc.get("Differences").isNull() || !enc.get("BaseEncoding").isNull())) return false;
+	return true;
 }
 
 function fontCovers(font, text) {

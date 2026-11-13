@@ -124,12 +124,12 @@ fuck pdf updates itself, without a background service, a tray icon, or anything 
 
   installed:  1.1.0   (C:\Users\you\AppData\Local\Programs\fuck pdf)
   looking for updates...
-  latest:     1.1.1   (github skinwaffle-repo/fpdf)
-  downloading fuck-pdf-1.1.1-setup.exe
+  latest:     1.1.2   (github skinwaffle-repo/fpdf)
+  downloading fuck-pdf-1.1.2-setup.exe
   [################################] 100%   126.3 / 126.3 MB
   sha-256 ok
   installing (silent)...
-  done. fuck pdf 1.1.1 is installed.
+  done. fuck pdf 1.1.2 is installed.
 ```
 
 ### where it looks
@@ -154,7 +154,7 @@ Change that in `%APPDATA%\fuck pdf\updater.json` (survives updates) or in `updat
 
 ```
 fuck-pdf-updater.exe                       check, ask, update
-fuck-pdf-updater.exe --check --json        just report: {"current":"1.1.0","latest":"1.1.1","available":true,...}
+fuck-pdf-updater.exe --check --json        just report: {"current":"1.1.1","latest":"1.1.2","available":true,...}
 fuck-pdf-updater.exe --yes --no-relaunch   unattended update (e.g. on a schedule)
 --source github:owner/repo                 override the sources (repeatable)
 --source folder:C:\path

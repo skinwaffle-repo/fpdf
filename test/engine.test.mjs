@@ -352,6 +352,21 @@ test("system font index", () => {
 	ok(E.pageText(inv.id, 2).includes("Sprzedawca: X"), "edited with explicit system font");
 });
 
+test("font without a Unicode map: flagged garbled, retyped in a real font", () => {
+	// red label text in a symbolic TrueType subset with no ToUnicode (design-tool export)
+	const d = E.open(fx("nofontmap.pdf"), "nofontmap.pdf", "/tmp/nofontmap.pdf");
+	const lines = E.pageLines(d.id, 0);
+	const label = lines.find((l) => !l.text.startsWith("Na"));
+	ok(label.garbled, "label line flagged garbled");
+	ok(!lines.find((l) => l.text.startsWith("Na")).garbled, "normal line not flagged");
+	const want = "NANOMAX do tworzyw sztucznych, sprzętu AGD";
+	E.editLine(d.id, 0, label, want);
+	ok(E.pageText(d.id, 0).includes(want), "retyped text with ę reads back correctly");
+	const after = E.pageLines(d.id, 0).find((l) => l.text === want);
+	ok(after && !after.garbled, "edited line is clean");
+	E.close(d.id);
+});
+
 test("dirty tracking + close", () => {
 	ok(E.dirtyDocs().some((d) => d.id === inv.id), "listed dirty");
 	E.markSaved(inv.id, "/tmp/x.pdf", "x.pdf");
