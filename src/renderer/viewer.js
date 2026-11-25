@@ -58,9 +58,10 @@ function fitZoom(doc, mode) {
 	const pages = doc.info.pages;
 	if (!pages.length) return 1;
 	const availW = Math.max(100, viewer.clientWidth - PAD_X - 14);
-	const maxW = Math.max(...pages.map((p) => p.w));
-	if (mode === "width") return clampZ(availW / maxW);
+	// fit the page being looked at, not the widest page in the file: one
+	// landscape or oversized page shouldn't shrink every normal page with it
 	const p = pages[doc.current] || pages[0];
+	if (mode === "width") return clampZ(availW / p.w);
 	const availH = Math.max(100, viewer.clientHeight - 44);
 	return clampZ(Math.min(availW / p.w, availH / p.h));
 }
@@ -74,7 +75,32 @@ export function layout(doc = cur()) {
 		v.el.style.width = Math.round(p.w * doc.zoom) + "px";
 		v.el.style.height = Math.round(p.h * doc.zoom) + "px";
 	}
+	center(doc);
 	bus.emit("zoom", doc);
+}
+
+/**
+ * Center each page in the window, not in a column as wide as the widest
+ * page. With mixed page sizes the old flex centering pushed every narrower
+ * page far to the right, behind a big empty gap that zooming never removed.
+ * Pages wider than the window start at the left padding and scroll.
+ */
+function center(doc = cur()) {
+	if (!doc) return;
+	const avail = viewer.clientWidth - PAD_X;
+	for (const v of views) {
+		const p = doc.info.pages[v.i];
+		if (!p) continue;
+		const w = Math.round(p.w * doc.zoom);
+		v.el.style.marginLeft = Math.max(0, Math.floor((avail - w) / 2)) + "px";
+	}
+}
+
+/** Scroll sideways just enough to bring a page into view, if it isn't. */
+function revealX(v) {
+	const l = v.el.offsetLeft, w = v.el.offsetWidth;
+	if (l >= viewer.scrollLeft && l + w <= viewer.scrollLeft + viewer.clientWidth) return;
+	viewer.scrollLeft = Math.max(0, l - Math.max(PAD_X / 2, (viewer.clientWidth - w) / 2));
 }
 
 export function onResize() {
@@ -87,8 +113,10 @@ export function onResize() {
 			doc.zoom = z;
 			layout(doc);
 			restoreAnchor(anchor);
+			if (views[doc.current]) revealX(views[doc.current]);
 		}
 	}
+	center(doc);
 	scheduleRender();
 }
 
@@ -121,6 +149,7 @@ export function setZoom(z, { fit = null, clientX = null, clientY = null } = {}) 
 	doc.zoom = fit ? fitZoom(doc, fit) : clampZ(z);
 	layout(doc);
 	restoreAnchor(anchor);
+	if (fit && views[doc.current]) revealX(views[doc.current]);
 	scheduleRender();
 	refreshInlineEditors();
 }
@@ -153,6 +182,7 @@ export function goToPage(i, { y = null, smooth = false } = {}) {
 		top = v.el.offsetTop + (y - p.bounds[1]) * doc.zoom - viewer.clientHeight / 3;
 	}
 	viewer.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
+	revealX(v);
 	doc.current = i;
 	bus.emit("current-page", doc);
 }
